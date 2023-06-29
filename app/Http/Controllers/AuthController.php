@@ -7,12 +7,12 @@ use Illuminate\Http\Request;
 class AuthController extends Controller
 {
     public function login(Request $request) {
-        
+
         $credenciais = $request->all(['email', 'password']); //[]
 
         //autenticação (email e senha)
         $token = auth('api')->attempt($credenciais);
-        
+
         if($token) { //usuário autenticado com sucesso
             return response()->json(['token' => $token]);
 
