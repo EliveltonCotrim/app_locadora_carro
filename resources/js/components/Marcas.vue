@@ -9,19 +9,21 @@
                                 <input-container-component title="ID" id="inputId" id-help="idHelp"
                                     help-text="Enter the brand ID">
 
-                                    <input type="number" class="form-control" id="inputId" aria-describedby="idHelp" />
+                                    <input type="number" class="form-control" id="inputId" v-model="busca.id"
+                                        aria-describedby="idHelp" />
                                 </input-container-component>
                             </div>
                             <div class="col mb-3">
                                 <input-container-component title="Name" id="inputName" id-help="nameHelp"
                                     help-text="Enter the brand name">
-                                    <input type="text" class="form-control" id="inputName" aria-describedby="nameHelp" />
+                                    <input type="text" class="form-control" id="inputName" v-model="busca.nome"
+                                        aria-describedby="nameHelp" />
                                 </input-container-component>
                             </div>
                         </div>
                     </template>
                     <template v-slot:footer>
-                        <button type="submit" class="btn btn-sm btn-primary float-end">
+                        <button type="submit" class="btn btn-sm btn-primary float-end" @click="pesquisar()">
                             Search
                         </button>
                     </template>
@@ -46,7 +48,7 @@
 
                                     <li v-for="link, chave in marcas.links" :key="chave" class="page-item"><a
                                             :class="link.active == true ? 'page-link active' : 'page-link'" href="#"
-                                            v-html="link.label" @click="carregarLista(link.url)"></a></li>
+                                            v-html="link.label" @click="paginacao(link)"></a></li>
                                 </paginate-component>
                             </div>
                             <div class="col">
@@ -112,26 +114,63 @@ export default {
     data() {
         return {
             urlBase: 'http://localhost:80/api/v1/marca',
+            urlPaginacao: '',
+            urlFiltro: '',
             inputName: '',
             inputImage: '',
             transactionStatus: '',
             transactionsDetails: {},
-            marcas: { data: [] }
+            marcas: { data: [] },
+            busca: {
+                id: '',
+                nome: ''
+            }
 
         }
     },
     methods: {
-        carregarLista(url = this.urlBase) {
-            if (url) {
+        pesquisar() {
+            let filtro = ''
 
-                axios.get(url)
-                    .then(response => {
-                        this.marcas = response.data
-                    })
-                    .catch(errors => {
-                        console.log(errors)
-                    })
+            for (let chave in this.busca) {
+                if (this.busca[chave]) {
+
+                    if (filtro != '') {
+                        filtro += ';'
+                    }
+
+                    filtro += chave + ':like:' + this.busca[chave]
+                }
             }
+
+            if (filtro) {
+                this.urlPaginacao = 'page=1'
+                this.urlFiltro = '&filtro=' + filtro
+
+            } else {
+                this.urlFiltro = ''
+
+            }
+
+            this.carregarLista()
+        },
+        paginacao(link) {
+            if (link.url) {
+                this.urlPaginacao = link.url.split('?')[1]
+                this.carregarLista()
+            }
+        },
+        carregarLista() {
+            let url = this.urlBase + '?' + this.urlPaginacao + this.urlFiltro
+            console.log('url: ' + url)
+            axios.get(url)
+                .then(response => {
+                    this.marcas = response.data
+                    console.log(this.marcas)
+                })
+                .catch(errors => {
+                    console.log(errors)
+                })
 
         },
         imageLoading(event) {
