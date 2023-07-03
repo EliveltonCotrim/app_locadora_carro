@@ -29,11 +29,11 @@
                     </template>
                 </card-component>
                 <!-- end card de busca -->
-
                 <!-- Alerts  -->
                 <alert-component :details="$store.state.transacao" title="Mensagem"
                     v-if="$store.state.transacao.status == 'success' && $store.state.transacao.status != false"
                     type="success" :message="messageAlert"></alert-component>
+
                 <alert-component :details="$store.state.transacao" title="Mensagem"
                     v-if="$store.state.transacao.status == 'error' && $store.state.transacao.status != false" type="danger"
                     :message="messageAlert"></alert-component>
@@ -45,7 +45,7 @@
                         <table-component
                             :visualizar="{ visivel: true, dataToggle: 'modal', dataTarget: '#modalVisualizar' }"
                             :remover="{ visivel: true, dataToggle: 'modal', dataTarget: '#modalRemover' }"
-                            :aditar="{ visivel: true, dataToggle: 'modal', dataTarget: '#modalEditar' }"
+                            :editar="{ visivel: true, dataToggle: 'modal', dataTarget: '#modalEditar' }"
                             :dados="marcas.data" :title="{
                                 id: { titulo: 'ID', tipo: 'text' },
                                 nome: { titulo: 'Nome', tipo: 'text' },
@@ -135,12 +135,31 @@
         <!-- Modal editar -->
         <modal-component id="modalEditar" title="Editar">
             <template v-slot:alerts>
+                <alert-component :details="$store.state.transacao" title="Transação efetuado com sucesso."
+                    v-if="$store.state.transacao.status == 'success'" type="success"
+                    :message="messageAlert"></alert-component>
+                <alert-component :details="$store.state.transacao" title="Erro na transação"
+                    v-if="$store.state.transacao.status == 'error'" type="danger"></alert-component>
             </template>
             <template v-slot:content>
-                Editar
+                <div class="form-group mb-2">
+                    <input-container-component id="inputName" title="Name" id-help="nameHelp"
+                        help-text="Enter the brand name">
+                        <input type="text" class="form-control" id="inputName" v-model="$store.state.item.nome"
+                            aria-describedby="nameHelp" />
+                    </input-container-component>
+                </div>
+                <div class="form-group mb-2">
+                    <input-container-component id="atualizarImage" title="Image" id-help="imageHelp"
+                        help-text="Select an image in PNG format">
+                        <input type="file" class="form-control" id="atualizarImagem" @change="imageLoading($event)"
+                            aria-describedby="imageHelp" />
+                    </input-container-component>
+                </div>
             </template>
             <template v-slot:footer>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" @click="atualizarMarca()">Atualizar</button>
             </template>
         </modal-component>
 
@@ -169,18 +188,6 @@ import Alert from './Alert.vue';
 import Paginate from './Paginate.vue';
 export default {
     components: { Alert, Paginate },
-    computed: {
-        token() {
-
-            let token = document.cookie.split(';').find(indice => {
-                return indice.includes('token=')
-            })
-
-            token = token.split('=')[1];
-            token = 'Bearer ' + token
-            return token;
-        }
-    },
     data() {
         return {
             urlBase: 'http://localhost:80/api/v1/marca',
@@ -245,13 +252,8 @@ export default {
 
         },
         removerMarca(id) {
-            let config = {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': this.token
-                }
-            }
-            axios.delete(this.urlBase + '/' + id, config)
+
+            axios.delete(this.urlBase + '/' + id)
                 .then(response => {
                     this.$store.state.transacao.status = 'success'
                     this.$store.state.transacao.message = response.data.msg
@@ -270,6 +272,39 @@ export default {
                     }, 5000)
                 })
         },
+        atualizarMarca() {
+            let formData = new FormData();
+            formData.append('_method', 'patch')
+            formData.append('nome', this.$store.state.item.nome)
+
+            if (this.inputImage[0]) {
+
+                formData.append('imagem', this.inputImage[0])
+            }
+
+            let url = this.urlBase + '/' + this.$store.state.item.id
+
+            let config = {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
+            }
+
+            axios.post(url, formData, config)
+                .then(response => {
+                    console.log('Atualizado', response)
+                    atualizarImagem.value = ''
+                    this.$store.state.transacao.status = 'success'
+                    this.$store.state.transacao.message = 'Registro de marca atualizado com sucesso!'
+                    this.carregarLista()
+                })
+                .catch(errors => {
+                    this.$store.state.transacao.status = 'error'
+                    this.$store.state.transacao.message = errors.response.data.message
+                    this.$store.state.transacao.dados = errors.response.data.errors
+                })
+
+        },
         imageLoading(event) {
             this.inputImage = event.target.files
         },
@@ -282,9 +317,6 @@ export default {
             let config = {
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    'Accept': 'application/json',
-                    'Authorization': this.token,
-
                 }
             }
 
@@ -295,6 +327,8 @@ export default {
                     this.transactionsDetails = {
                         message: 'ID do resgistro ' + response.data.id,
                     }
+
+                    this.carregarLista()
                 })
 
                 .catch(errors => {
