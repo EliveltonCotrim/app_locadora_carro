@@ -6,14 +6,24 @@
 
 import "./bootstrap";
 import { createApp } from "vue";
+import { createStore } from "vuex";
 
 /**
  * Next, we will create a fresh Vue application instance. You may then begin
  * registering components with the application instance so they are ready
  * to use in your application's views. An example is included for you.
  */
+const store = createStore({
+    state() {
+        return {
+            item: {},
+            transacao: {status: '', mensage: ''},
+        };
+    },
+});
 
-const app = createApp({});
+const app = createApp({ store });
+app.use(store);
 
 import ExampleComponent from "./components/ExampleComponent.vue";
 import LoginComponent from "./components/Login.vue";
@@ -36,7 +46,6 @@ app.component("example-component", ExampleComponent)
     .component("alert-component", AlertComponent)
     .component("paginate-component", PaginateComponent)
     .component("modal-component", ModalComponent);
-
 
 /**
  * The following block of code may be used to automatically register your

@@ -30,15 +30,29 @@
                 </card-component>
                 <!-- end card de busca -->
 
+                <!-- Alerts  -->
+                <alert-component :details="$store.state.transacao" title="Mensagem"
+                    v-if="$store.state.transacao.status == 'success' && $store.state.transacao.status != false"
+                    type="success" :message="messageAlert"></alert-component>
+                <alert-component :details="$store.state.transacao" title="Mensagem"
+                    v-if="$store.state.transacao.status == 'error' && $store.state.transacao.status != false" type="danger"
+                    :message="messageAlert"></alert-component>
+                <!-- Alerts  -->
+
                 <!-- Card de listagem -->
                 <card-component title="Relação de Marcas">
                     <template v-slot:content>
-                        <table-component :dados="marcas.data" :title="{
-                            id: { titulo: 'ID', tipo: 'text' },
-                            nome: { titulo: 'Nome', tipo: 'text' },
-                            imagem: { titulo: 'Imagem', tipo: 'imagem' },
-                            created_at: { titulo: 'Data de criação', tipo: 'data' }
-                        }"></table-component>
+                        <table-component
+                            :visualizar="{ visivel: true, dataToggle: 'modal', dataTarget: '#modalVisualizar' }"
+                            :remover="{ visivel: true, dataToggle: 'modal', dataTarget: '#modalRemover' }"
+                            :aditar="{ visivel: true, dataToggle: 'modal', dataTarget: '#modalEditar' }"
+                            :dados="marcas.data" :title="{
+                                id: { titulo: 'ID', tipo: 'text' },
+                                nome: { titulo: 'Nome', tipo: 'text' },
+                                imagem: { titulo: 'Imagem', tipo: 'imagem' },
+                                created_at: { titulo: 'Data de criação', tipo: 'data' }
+                            }
+                                "></table-component>
                     </template>
                     <template v-slot:footer>
 
@@ -46,7 +60,7 @@
                             <div class="col-10">
                                 <paginate-component>
 
-                                    <li v-for="link, chave in marcas.links" :key="chave" class="page-item"><a
+                                    <li v-for=" link, chave  in  marcas.links " :key="chave" class="page-item"><a
                                             :class="link.active == true ? 'page-link active' : 'page-link'" href="#"
                                             v-html="link.label" @click="paginacao(link)"></a></li>
                                 </paginate-component>
@@ -64,6 +78,8 @@
                 <!-- end card list -->
             </div>
         </div>
+
+        <!-- modal add marca -->
         <modal-component id="modalAddMarca" title="Add marca" title-button="Save">
             <template v-slot:alerts>
                 <alert-component :details="transactionsDetails" title="Cadastro efetuado com sucesso."
@@ -92,6 +108,60 @@
                 <button type="button" class="btn btn-primary" @click="save()">Save</button>
             </template>
         </modal-component>
+
+        <!-- Modal visualizar -->
+        <modal-component id="modalVisualizar" title="Marca">
+            <template v-slot:alerts>
+            </template>
+            <template v-slot:content>
+                <input-container-component id="inputId" title="ID">
+                    <input class="form-control" type="numeric" id="inputId" :value="$store.state.item['id']" readonly>
+                </input-container-component>
+                <input-container-component id="inputName" title="Nome">
+                    <input class="form-control" type="text" id="inputName" :value="$store.state.item['nome']" readonly>
+                </input-container-component>
+                <input-container-component title="Imagem: " v-if="$store.state.item['imagem']">
+                    <img :src="'storage/' + $store.state.item['imagem']" width="50" height="50">
+                </input-container-component>
+                <input-container-component id="inputData" title="Data de criação">
+                    <input class="form-control" type="text" id="inputData" :value="$store.state.item['created_at']"
+                        readonly>
+                </input-container-component>
+            </template>
+            <template v-slot:footer>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </template>
+        </modal-component>
+        <!-- Modal editar -->
+        <modal-component id="modalEditar" title="Editar">
+            <template v-slot:alerts>
+            </template>
+            <template v-slot:content>
+                Editar
+            </template>
+            <template v-slot:footer>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </template>
+        </modal-component>
+
+        <!-- Modal remover -->
+        <modal-component id="modalRemover" title="Remover Marca">
+            <template v-slot:alerts>
+            </template>
+            <template v-slot:content>
+                <input-container-component id="inputId" title="ID">
+                    <input class="form-control" type="numeric" id="inputId" :value="$store.state.item['id']" readonly>
+                </input-container-component>
+                <input-container-component id="inputName" title="Nome">
+                    <input class="form-control" type="text" id="inputName" :value="$store.state.item['nome']" readonly>
+                </input-container-component>
+            </template>
+            <template v-slot:footer>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal"
+                    @click="removerMarca($store.state.item['id'])">Remover</button>
+            </template>
+        </modal-component>
     </div>
 </template>
 <script>
@@ -118,6 +188,8 @@ export default {
             urlFiltro: '',
             inputName: '',
             inputImage: '',
+            messageAlert: '',
+            showAlert: false,
             transactionStatus: '',
             transactionsDetails: {},
             marcas: { data: [] },
@@ -162,7 +234,6 @@ export default {
         },
         carregarLista() {
             let url = this.urlBase + '?' + this.urlPaginacao + this.urlFiltro
-            console.log('url: ' + url)
             axios.get(url)
                 .then(response => {
                     this.marcas = response.data
@@ -172,6 +243,32 @@ export default {
                     console.log(errors)
                 })
 
+        },
+        removerMarca(id) {
+            let config = {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': this.token
+                }
+            }
+            axios.delete(this.urlBase + '/' + id, config)
+                .then(response => {
+                    this.$store.state.transacao.status = 'success'
+                    this.$store.state.transacao.message = response.data.msg
+                    this.carregarLista()
+
+                    setTimeout(() => {
+                        this.$store.state.transacao.status = false
+                    }, 5000)
+                })
+                .catch(errors => {
+                    this.$store.state.transacao.status = 'error'
+                    this.$store.state.transacao.message = errors.response.data.erro
+
+                    setTimeout(() => {
+                        this.$store.state.transacao.status = false
+                    }, 5000)
+                })
         },
         imageLoading(event) {
             this.inputImage = event.target.files
